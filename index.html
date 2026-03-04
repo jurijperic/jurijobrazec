@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avto Maze - Večji Labirint</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { 
+            margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            min-height: 100vh; background: #fdfdfd; font-family: 'Roboto Mono', monospace; padding: 10px; box-sizing: border-box;
+        }
+        .controls { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; width: 100%; }
+        #game-container { position: relative; background: white; border: 2px solid #333; max-width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        #player { 
+            position: absolute; width: 30px; height: 30px; background-image: url('avto.png'); 
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+            transform: translate(-50%, -50%); z-index: 100; cursor: grab; pointer-events: auto;
+        }
+        .grabbing, .grabbing #player { cursor: none !important; }
+        .dino { position: absolute; width: 22px; height: 22px; background: #ff4500; border-radius: 4px; transform: translate(-50%, -50%); z-index: 90; border: 2px solid black; }
+        .btn { padding: 10px 15px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; background: #2563eb; font-family: inherit; }
+        #timer-display { background: #fee2e2; padding: 10px 15px; border-radius: 8px; color: #b91c1c; font-weight: bold; border: 2px solid #ef4444; text-align: center; }
+        canvas { display: block; max-width: 100%; height: auto !important; }
+        .disabled { pointer-events: none; opacity: 0.7; }
+        
+        /* Alert Customization */
+        .tweet-alert-popup { padding: 0 !important; overflow: hidden; border-radius: 12px !important; width: 320px !important; max-width: 90%; font-family: inherit !important; }
+        .tweet-alert-image { width: 100% !important; margin: 0 !important; }
+        .tweet-alert-html { margin: 10px !important; font-weight: bold; font-size: 0.9em; }
+        .swal2-confirm { margin-bottom: 10px !important; font-family: inherit !important; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <button id="start-btn" class="btn" style="background: #059669;" onclick="startGame()">▶ START</button>
+    <button id="auto-btn" class="btn" style="background: #0891b2;" onclick="toggleAutopilot()">🚀 AUTO</button>
+    <button id="show-btn" class="btn" style="background: #9333ea;" onclick="toggleSolution()">👁️ POT</button>
+    <button class="btn" style="background: #64748b;" onclick="location.reload()">🔄 RESET</button>
+    <div id="timer-display">PRIPRAVLJEN?</div>
+</div>
+
+<div id="game-container" class="disabled">
+    <canvas id="mazeCanvas"></canvas>
+    <div id="player"></div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mazeCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const playerEl = document.getElementById('player');
+    const timerDisplay = document.getElementById('timer-display');
+
+    // POVEČAN LABIRINT: cellSize z 24 na 30
+    const cols = 20; const rows = 25; const cellSize = 30; 
+    canvas.width = cols * cellSize; canvas.height = rows * cellSize;
+
+    let grid = []; let gameStarted = false; let isAutopilot = false;
+    let autopilotRunning = false; let isDragging = false; let showSolution = false;
+    let currentAutoIdx = 0; let solutionPoints = []; let playerPos = { x: 0, y: 0 };
+    let playerHistory = []; let dino = null; let timeLeft = 30;
+
+    const AUTO_SPEED = 3.0; const DINO_SPEED = 2.0;
+
+    function setupMaze() {
+        for (let r = 0; r < rows; r++) {
+            grid[r] = [];
+            for (let c = 0; c < cols; c++) {
+                grid[r][c] = { r, c, walls: [true, true, true, true], visited: false };
+            }
+        }
+        let stack = []; let current = grid[0][0]; current.visited = true;
+        while (true) {
+            let next = getNeighbor(current);
+            if (next) { next.visited = true; stack.push(current); removeWalls(current, next); current = next; }
+            else if (stack.length > 0) { current = stack.pop(); } else break;
+        }
+        solveMaze();
+        playerPos = { x: solutionPoints[0].x, y: solutionPoints[0].y };
+        playerHistory.push({...playerPos});
+        drawAll();
+    }
+
+    function getNeighbor(cell) {
+        let n = []; let {r, c} = cell;
+        if (r > 0 && !grid[r-1][c].visited) n.push(grid[r-1][c]);
+        if (r < rows-1 && !grid[r+1][c].visited) n.push(grid[r+1][c]);
+        if (c > 0 && !grid[r][c-1].visited) n.push(grid[r][c-1]);
+        if (c < cols-1 && !grid[r][c+1].visited) n.push(grid[r][c+1]);
+        return n.length > 0 ? n[Math.floor(Math.random()*n.length)] : undefined;
+    }
+
+    function removeWalls(a, b) {
+        let dr = a.r - b.r;
+        if (dr === 1) { a.walls[0] = false; b.walls[2] = false; }
+        else if (dr === -1) { a.walls[2] = false; b.walls[0] = false; }
+        let dc = a.c - b.c;
+        if (dc === 1) { a.walls[3] = false; b.walls[1] = false; }
+        else if (dc === -1) { a.walls[1] = false; b.walls[3] = false; }
+    }
+
+    function drawAll() {
+        ctx.fillStyle = "white"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        if (showSolution) {
+            ctx.beginPath(); ctx.strokeStyle = "rgba(147, 51, 234, 0.2)"; ctx.lineWidth = 12;
+            ctx.moveTo(solutionPoints[0].x, solutionPoints[0].y);
+            for (let i = 1; i < solutionPoints.length; i++) ctx.lineTo(solutionPoints[i].x, solutionPoints[i].y);
+            ctx.stroke();
+        }
+        ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.beginPath();
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let x = c * cellSize; let y = r * cellSize;
+                if (grid[r][c].walls[0]) { ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); }
+                if (grid[r][c].walls[1]) { ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); }
+                if (grid[r][c].walls[2]) { ctx.moveTo(x + cellSize, y + cellSize); ctx.lineTo(x, y + cellSize); }
+                if (grid[r][c].walls[3]) { ctx.moveTo(x, y + cellSize); ctx.lineTo(x, y); }
+            }
+        }
+        ctx.stroke();
+        ctx.fillStyle = "#4ade80"; ctx.fillRect((cols-1)*cellSize + 5, (rows-1)*cellSize + 5, cellSize - 10, cellSize - 10);
+        playerEl.style.left = playerPos.x + "px"; playerEl.style.top = playerPos.y + "px";
+    }
+
+    function solveMaze() {
+        let queue = [grid[0][0]]; let cameFrom = new Map(); let visited = new Set(["0,0"]);
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            if (curr.r === rows-1 && curr.c === cols-1) {
+                let path = [];
+                while (curr) { path.push({ x: curr.c * cellSize + cellSize/2, y: curr.r * cellSize + cellSize/2 }); curr = cameFrom.get(curr); }
+                solutionPoints = path.reverse(); return;
+            }
+            let dirs = [[-1,0,0], [0,1,1], [1,0,2], [0,-1,3]];
+            for (let [dr, dc, w] of dirs) {
+                let nr = curr.r + dr, nc = curr.c + dc;
+                if (nr>=0 && nr<rows && nc>=0 && nc<cols && !curr.walls[w] && !visited.has(nr+","+nc)) {
+                    visited.add(nr+","+nc); cameFrom.set(grid[nr][nc], curr); queue.push(grid[nr][nc]);
+                }
+            }
+        }
+    }
+
+    // MINIMALEN HITBOX: Preverja le 3px okoli centra
+    function isWall(x, y) {
+        const margin = 3; 
+        const points = [{x: x, y: y}, {x: x-margin, y: y-margin}, {x: x+margin, y: y-margin}, {x: x-margin, y: y+margin}, {x: x+margin, y: y+margin}];
+        for (let p of points) {
+            if (p.x < 0 || p.x >= canvas.width || p.y < 0 || p.y >= canvas.height) continue;
+            const d = ctx.getImageData(p.x, p.y, 1, 1).data;
+            if (d[0] === 0 && d[1] === 0 && d[2] === 0 && d[3] !== 0) return true;
+        }
+        return false;
+    }
+
+    function startGame() {
+        gameStarted = true;
+        document.getElementById('start-btn').style.display = "none";
+        document.getElementById('game-container').classList.remove('disabled');
+        setInterval(() => {
+            if (timeLeft > 0 && gameStarted) { timeLeft--; timerDisplay.innerText = "DINO ČEZ: " + timeLeft + "s"; if (timeLeft === 0) spawnDino(); }
+        }, 1000);
+        gameLoop();
+    }
+
+    function spawnDino() {
+        if (dino) return;
+        timerDisplay.innerText = "⚠️ BEŽI!";
+        const el = document.createElement('div'); el.className = 'dino';
+        document.getElementById('game-container').appendChild(el);
+        dino = { el, x: playerHistory[0].x, y: playerHistory[0].y, hIdx: 0 };
+    }
+
+    function triggerGameOver(msg) {
+        gameStarted = false;
+        Swal.fire({
+            html: msg, imageUrl: 'dino.jpg', imageWidth: '100%',
+            confirmButtonText: 'RESTART', confirmButtonColor: '#ef4444',
+            customClass: { popup: 'tweet-alert-popup', image: 'tweet-alert-image', htmlContainer: 'tweet-alert-html' }
+        }).then(() => location.reload());
+    }
+
+    playerEl.onmousedown = (e) => { if (gameStarted && !isAutopilot) { isDragging = true; document.body.classList.add('grabbing'); e.preventDefault(); } };
+
+    window.onmousemove = (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const scale = canvas.offsetWidth / canvas.width;
+        const x = (e.clientX - rect.left) / scale;
+        const y = (e.clientY - rect.top) / scale;
+        if (!isWall(x, y)) { playerPos.x = x; playerPos.y = y; }
+        else { isDragging = false; document.body.classList.remove('grabbing'); triggerGameOver('BOOM! Stena je bila močnejša.'); }
+    };
+    window.onmouseup = () => { isDragging = false; document.body.classList.remove('grabbing'); };
+
+    function gameLoop() {
+        if (!gameStarted) return;
+        drawAll();
+        let lastH = playerHistory[playerHistory.length - 1];
+        if (Math.sqrt(Math.pow(playerPos.x-lastH.x,2)+Math.pow(playerPos.y-lastH.y,2)) > 5) playerHistory.push({...playerPos});
+        if (dino && playerHistory.length > dino.hIdx + 1) {
+            let t = playerHistory[dino.hIdx + 1]; let dx = t.x - dino.x; let dy = t.y - dino.y; let d = Math.sqrt(dx*dx + dy*dy);
+            if (d > 1.5) { dino.x += (dx/d)*DINO_SPEED; dino.y += (dy/d)*DINO_SPEED; } else dino.hIdx++;
+            dino.el.style.left = dino.x + "px"; dino.el.style.top = dino.y + "px";
+            if (Math.sqrt(Math.pow(dino.x-playerPos.x,2)+Math.pow(dino.y-playerPos.y,2)) < 18) { triggerGameOver('Dino te je dohitel!'); return; }
+        }
+        if (playerPos.x > (cols-1)*cellSize && playerPos.y > (rows-1)*cellSize) {
+            gameStarted = false;
+            Swal.fire({ title: 'ZMAGA!', text: 'Parkiral si na varnem!', icon: 'success' }).then(() => location.reload());
+            return;
+        }
+        requestAnimationFrame(gameLoop);
+    }
+
+    function toggleAutopilot() {
+        if (!gameStarted) return; isAutopilot = !isAutopilot;
+        if (autopilotRunning) return; autopilotRunning = true;
+        (async () => {
+            while (isAutopilot && currentAutoIdx < solutionPoints.length - 1) {
+                let start = solutionPoints[currentAutoIdx]; let end = solutionPoints[currentAutoIdx + 1];
+                let dist = Math.sqrt(Math.pow(end.x - playerPos.x, 2) + Math.pow(end.y - playerPos.y, 2));
+                let steps = dist / AUTO_SPEED;
+                for (let j = 0; j <= steps; j++) {
+                    if (!isAutopilot) break;
+                    let t = j / steps; playerPos.x = start.x + (end.x - start.x) * t; playerPos.y = start.y + (end.y - start.y) * t;
+                    await new Promise(r => requestAnimationFrame(r));
+                }
+                if (isAutopilot) currentAutoIdx++;
+            }
+            autopilotRunning = false;
+        })();
+    }
+
+    setupMaze();
+</script>
+</body>
+</html>
