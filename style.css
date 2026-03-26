@@ -1,0 +1,195 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Roboto Mono', monospace;
+    background: #111 url('odz.png');
+    background-size: cover;
+    overflow: hidden;
+}
+
+.main-wrapper {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.78);
+    padding: 12px;
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+    z-index: 1000;
+}
+
+#game-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+}
+
+#player {
+    position: absolute;
+    background: url('avto.png') no-repeat center;
+    background-size: contain;
+    z-index: 100;
+}
+
+.dino {
+    position: absolute;
+    background: url('dino.png') no-repeat center;
+    background-size: contain;
+    z-index: 95;
+    width: 75px !important;
+    height: 85px !important;
+}
+
+.btn {
+    padding: 9px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    background: #b91c1c;
+    transition: 0.2s;
+    text-align: center;
+    width: 92px;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.btn.active {
+    background: #dc2626;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.7);
+}
+
+#timer-display {
+    background: #b91c1c;
+    color: white;
+    padding: 9px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.tweet-alert-popup {
+    padding: 0 !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    width: 92% !important;
+    max-width: 520px !important;
+    background: #0f172a !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 0 30px rgba(0,0,0,0.55) !important;
+    color: white !important;
+}
+
+.tweet-alert-image {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 75vh;
+    object-fit: contain;
+    display: block;
+    border: none !important;
+}
+
+.tweet-alert-title {
+    font-family: 'Roboto Mono', monospace !important;
+    font-size: 20px !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+    padding-top: 16px !important;
+}
+
+.tweet-alert-html {
+    font-family: 'Roboto Mono', monospace !important;
+    color: #e5e7eb !important;
+    text-align: left !important;
+    padding: 8px 22px 6px 22px !important;
+    line-height: 1.65 !important;
+    font-size: 14px !important;
+}
+
+.tweet-alert-confirm {
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 10px 18px !important;
+    font-family: 'Roboto Mono', monospace !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    background: #b91c1c !important;
+    color: white !important;
+    box-shadow: none !important;
+}
+
+.tweet-alert-confirm:focus {
+    box-shadow: none !important;
+}
+
+.instructions-content {
+    text-align: left;
+}
+
+.instructions-content p {
+    margin: 0 0 10px 0;
+}
+
+.instructions-content p:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .main-wrapper {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    .btn {
+        width: auto;
+        min-width: 84px;
+        flex: 1;
+    }
+
+    #timer-display {
+        width: 100%;
+    }
+}

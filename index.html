@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avto Maze - Dino King Size</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="main-wrapper">
+    <div class="sidebar">
+        <div id="timer-display">00:10</div>
+        <button id="start-btn" class="btn" onclick="startGame()">▶ START</button>
+        <button id="auto-btn" class="btn" onclick="toggleAutopilot()">🚀 AUTO</button>
+        <button id="path-btn" class="btn" onclick="togglePath()">🗺️ POT</button>
+        <button id="help-btn" class="btn" onclick="showInstructions()">ℹ NAVODILA</button>
+        <button class="btn" onclick="location.reload()">🔄 RESET</button>
+    </div>
+
+    <div id="game-container">
+        <canvas id="mazeCanvas"></canvas>
+        <div id="player"></div>
+    </div>
+</div>
+
+<script src="glavni.js"></script>
+</body>
+</html>
